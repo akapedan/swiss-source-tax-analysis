@@ -120,198 +120,395 @@ def filter_data(df):
       - No children (anzahl_kinder == 0)
       - Tarif code 'A'
       - Kirchensteuer 'N'
-      - Taxable income below 15,000 CHF.
+      - Taxable income below 14,000 CHF.
     Also saves the filtered data to CSV.
     """
     df_filtered = df[
         (df['anzahl_kinder'] == 0) &
         (df['tarif_code'] == 'A') &
         (df['kirchensteuer'] == 'N') &
-        (df['steuerbares_einkommen'] < 15_000)
+        (df['steuerbares_einkommen'] < 10_001)
     ]
     output_filtered = 'output/tar25_cleaned_filtered.csv'
     df_filtered.to_csv(output_filtered, index=False)
     print(f"Filtered data saved to '{output_filtered}'")
     return df_filtered
 
-def create_base_figure(df_filtered):
+def create_base_figure(df_filtered, canton_names=None):
     """
-    Creates an interactive Plotly figure for canton tax rates.
+    Create an interactive line plot for canton source tax rates using Plotly.
+    
+    Args:
+        df_filtered (pd.DataFrame): Filtered DataFrame containing tax rate data
+        canton_names (dict, optional): Mapping of canton codes to full names
     """
-    # Color definitions.
-    GREY75 = 'rgba(191, 191, 191, 0.5)'
+    # Color definitions
+    GREY75 = 'rgba(191, 191, 191, 0.5)'  # Light grey with transparency
     GREY40 = '#666666'
+    
+    # Color scale for highlighted cantons
     COLOR_SCALE = [
         '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
         '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf'
     ]
     
+    # If no canton names provided, use the codes
+    if canton_names is None:
+        canton_names = {canton: canton for canton in df_filtered['kanton'].unique()}
+
+    # Create figure
     fig = go.Figure()
-    x_max = df_filtered['steuerbares_einkommen'].max()
+
+    # Calculate label positions
+    x_max = 10000  # Set fixed x_max at 10,000
     y_max = df_filtered['steuer_prozent'].max()
     y_min = df_filtered['steuer_prozent'].min()
-    y_range = y_max * 1.15 - y_min * 0.85
-    x_end = x_max * 1.12
     
+    # Create sorted list of cantons (for data mapping)
     cantons = sorted(df_filtered['kanton'].unique())
     canton_to_idx = {canton: idx for idx, canton in enumerate(cantons)}
-    
-    # Calculate display positions for labels.
+
+    # Create display points (for visual layout)
     display_points = []
     for canton in cantons:
         data = df_filtered[df_filtered['kanton'] == canton]
-        y_val = data['steuer_prozent'].iloc[-1]
-        display_points.append({'canton': canton, 'y_start': y_val, 'idx': canton_to_idx[canton]})
-    display_points.sort(key=lambda x: x['y_start'])
-    
-    for i, point in enumerate(display_points):
-        position = i / (len(display_points) - 1) if len(display_points) > 1 else 0
-        if i < len(display_points) / 2:
-            transformed_pos = np.power(position * 2, 1.5) / 2
+        # Get the last data point before or at x_max
+        data_filtered = data[data['steuerbares_einkommen'] <= x_max]
+        if len(data_filtered) > 0:
+            y_val = data_filtered['steuer_prozent'].iloc[-1]
+            x_val = data_filtered['steuerbares_einkommen'].iloc[-1]
         else:
-            transformed_pos = 1 - np.power((1 - position) * 2, 1.5) / 2
-        point['y_end'] = y_min * 0.85 + transformed_pos * y_range
+            # Fallback if no data points below x_max
+            y_val = data['steuer_prozent'].iloc[0]
+            x_val = data['steuerbares_einkommen'].iloc[0]
+            
+        display_points.append({
+            'canton': canton,
+            'y_start': y_val,
+            'x_last': x_val,
+            'idx': canton_to_idx[canton]
+        })
+
+    # Sort by y_start value
+    display_points.sort(key=lambda x: x['y_start'])
+
+    # Define label positions with more padding at top and bottom
+    # Use 90% of the available space, leaving 5% padding at top and bottom
+    y_range = y_max * 1.15 - y_min * 0.85
+    padding = 0.05 * y_range
+    y_positions = np.linspace(
+        y_min * 0.85 + padding,  # Add padding at bottom
+        y_max * 1.15 - padding,  # Subtract padding at top
+        len(display_points)
+    )
     
-    # Build traces for each canton.
+    # Assign positions to display points
+    for i, point in enumerate(display_points):
+        point['y_end'] = y_positions[i]
+
+    # Define x-coordinates for the connecting lines with a larger gap
+    x_start = x_max  # End of data
+    x_mid = x_max * 1.03  # Midpoint for curve
+    x_end = x_max * 1.1  # Position for end of line, well before labels
+    x_label = x_max * 1.1  # Position for labels, with a significant gap
+    
+    # Create traces in alphabetical order (for correct mapping)
     for canton in cantons:
         idx = canton_to_idx[canton]
         data = df_filtered[df_filtered['kanton'] == canton]
+        
+        # Find the display point for this canton
         display_point = next(p for p in display_points if p['canton'] == canton)
         
-        # Grey line.
-        fig.add_trace(go.Scatter(
-            x=data['steuerbares_einkommen'],
-            y=data['steuer_prozent'],
-            name=canton,
-            line=dict(color=GREY75, width=1.5),
-            hovertemplate="Canton: %{text}<br>Income: %{x:,.0f} CHF<br>Tax Rate: %{y:.2f}%<extra></extra>",
-            text=[canton] * len(data),
-            legendgroup=canton,
-            mode='lines',
-            visible=True
-        ))
+        # Main line (grey) - limit to x_max
+        fig.add_trace(
+            go.Scatter(
+                x=data[data['steuerbares_einkommen'] <= x_max]['steuerbares_einkommen'],
+                y=data[data['steuerbares_einkommen'] <= x_max]['steuer_prozent'],
+                name=canton,
+                line=dict(
+                    color=GREY75,
+                    width=1.5
+                ),
+                hovertemplate="Canton: %{text}<br>Income: %{x:,.0f} CHF<br>Tax Rate: %{y:.2f}%<extra></extra>",
+                text=[canton] * len(data[data['steuerbares_einkommen'] <= x_max]),
+                legendgroup=canton,
+                mode='lines',
+                visible=True
+            )
+        )
         
-        # Colored line (hidden by default).
-        fig.add_trace(go.Scatter(
-            x=data['steuerbares_einkommen'],
-            y=data['steuer_prozent'],
-            name=canton + "_colored",
-            line=dict(color=COLOR_SCALE[idx % len(COLOR_SCALE)], width=2),
-            hovertemplate="Canton: %{text}<br>Income: %{x:,.0f} CHF<br>Tax Rate: %{y:.2f}%<extra></extra>",
-            text=[canton] * len(data),
-            legendgroup=canton,
-            mode='lines',
-            visible=False,
-            showlegend=False
-        ))
+        # Colored version of the line (initially hidden) - limit to x_max
+        fig.add_trace(
+            go.Scatter(
+                x=data[data['steuerbares_einkommen'] <= x_max]['steuerbares_einkommen'],
+                y=data[data['steuerbares_einkommen'] <= x_max]['steuer_prozent'],
+                name=canton + "_colored",
+                line=dict(
+                    color=COLOR_SCALE[idx % len(COLOR_SCALE)],
+                    width=2
+                ),
+                hovertemplate="Canton: %{text}<br>Income: %{x:,.0f} CHF<br>Tax Rate: %{y:.2f}%<extra></extra>",
+                text=[canton] * len(data[data['steuerbares_einkommen'] <= x_max]),
+                legendgroup=canton,
+                mode='lines',
+                visible=False,
+                showlegend=False
+            )
+        )
         
-        # Connecting line to label.
-        PAD = x_max * 0.005
-        fig.add_trace(go.Scatter(
-            x=[x_max, (x_max + x_end - PAD) / 2, x_end - PAD],
-            y=[display_point['y_start'], display_point['y_end'], display_point['y_end']],
-            mode='lines',
-            line=dict(color=GREY75, width=1, dash='dash'),
-            hoverinfo='skip',
-            showlegend=False,
-            legendgroup=canton
-        ))
+        # Add connecting line with three points (like in the example)
+        fig.add_trace(
+            go.Scatter(
+                x=[display_point['x_last'], x_mid, x_end],
+                y=[display_point['y_start'], display_point['y_end'], display_point['y_end']],
+                mode='lines',
+                line=dict(
+                    color=GREY75,
+                    width=1,
+                    dash='dash'
+                ),
+                hoverinfo='skip',
+                showlegend=False,
+                legendgroup=canton
+            )
+        )
         
-        # Canton label.
-        fig.add_trace(go.Scatter(
-            x=[x_end],
-            y=[display_point['y_end']],
-            mode='text',
-            text=[canton],
-            textposition="middle right",
-            textfont=dict(color=GREY40, size=10),
-            hoverinfo='skip',
-            showlegend=False,
-            legendgroup=canton
-        ))
+        # Add annotation for label instead of scatter text
+        fig.add_annotation(
+            x=x_label,
+            y=display_point['y_end'],
+            text=canton_names.get(canton, canton),
+            showarrow=False,
+            font=dict(
+                color=GREY40,
+                size=10
+            ),
+            xanchor='left',  # Explicitly set left alignment
+            yanchor='middle'
+        )
+
+    # Create custom grid lines that stop at x_max
+    x_grid_lines = []
+    for x in np.linspace(0, x_max, 6):  # 6 grid lines from 0 to x_max
+        x_grid_lines.append(
+            dict(
+                type="line",
+                x0=x,
+                y0=y_min * 0.85,
+                x1=x,
+                y1=y_max * 1.15,
+                line=dict(
+                    color="rgba(232, 232, 232, 1)",
+                    width=1
+                )
+            )
+        )
     
-    # Update layout.
+    y_grid_lines = []
+    for y in np.linspace(y_min * 0.85, y_max * 1.15, 10):  # 10 horizontal grid lines
+        y_grid_lines.append(
+            dict(
+                type="line",
+                x0=0,
+                y0=y,
+                x1=x_max,  # Stop at x_max
+                y1=y,
+                line=dict(
+                    color="rgba(232, 232, 232, 1)",
+                    width=1
+                )
+            )
+        )
+    
+    # Calculate the maximum label length to set appropriate right margin
+    max_label_length = max([len(canton_names.get(canton, canton)) for canton in cantons])
+    right_margin = max_label_length * 2 + 20  # Reduced multiplier and base value
+    
+    # Update layout
     fig.update_layout(
         plot_bgcolor='rgba(250, 250, 250, 1)',
         paper_bgcolor='rgba(250, 250, 250, 1)',
         title=dict(
-            text='Tax Rate Progression by Canton (No Children, Tarif Code A)',
+            text='Source Tax Rate Progression by Canton (No Children, Alleinstehend)',
             x=0.5,
             font=dict(size=14, color=GREY40)
         ),
         xaxis=dict(
-            title=dict(text='Taxable Income (CHF)', font=dict(size=12, color=GREY40)),
-            gridcolor='rgba(232, 232, 232, 1)',
-            showgrid=True,
+            title=dict(
+                text='Monthly Taxable Income (CHF)',
+                font=dict(size=12, color=GREY40)
+            ),
+            showgrid=False,  # Disable default grid
             zeroline=False,
-            tickformat=',d'
+            tickformat=',d',
+            range=[0, x_max * 1.22]  # Reduced range to minimize extra space
         ),
         yaxis=dict(
-            title=dict(text='Tax Rate (%)', font=dict(size=12, color=GREY40)),
-            gridcolor='rgba(232, 232, 232, 1)',
-            showgrid=True,
-            zeroline=False
+            title=dict(
+                text='Source Tax Rate (%)',
+                font=dict(size=12, color=GREY40)
+            ),
+            showgrid=False,  # Disable default grid
+            zeroline=False,
+            range=[y_min * 0.85 - padding, y_max * 1.15 + padding]  # Add extra padding
         ),
         showlegend=False,
         hovermode='closest',
         height=800,
-        width=1400,
-        margin=dict(t=100, l=50, r=150, b=50)
+        width=1600,
+        margin=dict(t=100, l=50, r=right_margin, b=50),  # Reduced right margin
+        shapes=x_grid_lines + y_grid_lines  # Add custom grid lines
+    )
+    
+    # Add a vertical line at x_max to visually separate the grid from the labels
+    fig.add_shape(
+        type="line",
+        x0=x_max,
+        y0=y_min * 0.85 - padding,
+        x1=x_max,
+        y1=y_max * 1.15 + padding,
+        line=dict(
+            color="rgba(232, 232, 232, 1)",
+            width=1
+        )
+    )
+    
+    # Add x-axis tick at 10,000
+    fig.update_xaxes(
+        tickvals=[0, 2000, 4000, 6000, 8000, 10000],
+        ticktext=['0', '2,000', '4,000', '6,000', '8,000', '10,000']
     )
     
     return fig
 
 def create_dash_app(df_filtered):
-    """
-    Creates and configures a Dash application for interactive visualization.
-    """
+    # Canton name mapping
+    canton_names = {
+        'AG': 'Aargau (AG)',
+        'AI': 'Appenzell Innerrhoden (AI)',
+        'AR': 'Appenzell Ausserrhoden (AR)',
+        'BE': 'Bern (BE)',
+        'BL': 'Basel-Landschaft (BL)',
+        'BS': 'Basel-Stadt (BS)',
+        'FR': 'Fribourg (FR)',
+        'GE': 'Geneva (GE)',
+        'GL': 'Glarus (GL)',
+        'GR': 'Graubünden (GR)',
+        'JU': 'Jura (JU)',
+        'LU': 'Lucerne (LU)',
+        'NE': 'Neuchâtel (NE)',
+        'NW': 'Nidwalden (NW)',
+        'OW': 'Obwalden (OW)',
+        'SG': 'St. Gallen (SG)',
+        'SH': 'Schaffhausen (SH)',
+        'SO': 'Solothurn (SO)',
+        'SZ': 'Schwyz (SZ)',
+        'TG': 'Thurgau (TG)',
+        'TI': 'Ticino (TI)',
+        'UR': 'Uri (UR)',
+        'VD': 'Vaud (VD)',
+        'VS': 'Valais (VS)',
+        'ZG': 'Zug (ZG)',
+        'ZH': 'Zurich (ZH)'
+    }
+    
     app = Dash(__name__)
     
+    # Create sorted list of cantons
+    cantons = sorted(df_filtered['kanton'].unique())
+    
+    # Add custom CSS styling
     app.layout = html.Div([
-        html.Div([
+        html.Div([  # Container for dropdown
             dcc.Dropdown(
                 id='canton-selector',
-                options=[{'label': canton, 'value': canton} for canton in sorted(df_filtered['kanton'].unique())],
+                options=[
+                    {'label': canton_names.get(canton, canton), 'value': canton} 
+                    for canton in cantons
+                ],
                 multi=True,
                 placeholder="Select cantons...",
-                style={'width': '400px', 'backgroundColor': 'white'},
+                style={
+                    'width': '400px',
+                    'backgroundColor': 'white',
+                },
                 optionHeight=35,
                 maxHeight=600,
             )
-        ], style={'width': '100%', 'display': 'flex', 'justifyContent': 'flex-end',
-                  'marginBottom': '20px', 'marginRight': '150px'}),
+        ], style={
+            'width': '100%',
+            'display': 'flex',
+            'justifyContent': 'flex-end',
+            'marginBottom': '20px',
+            'marginRight': '350px'  # Increased to match the figure margin
+        }),
         dcc.Graph(
             id='canton-plot',
-            figure=create_base_figure(df_filtered),
-            style={'height': '800px', 'width': '1400px'}
+            figure=create_base_figure(df_filtered, canton_names),
+            style={
+                'height': '800px',
+                'width': '1600px'  # Increased to match the figure width
+            }
         )
-    ], style={'width': '100%', 'display': 'flex', 'flexDirection': 'column',
-              'alignItems': 'center', 'padding': '20px'})
+    ], style={
+        'width': '100%',
+        'display': 'flex',
+        'flexDirection': 'column',
+        'alignItems': 'center',
+        'padding': '20px'
+    })
     
     @app.callback(
         Output('canton-plot', 'figure'),
         Input('canton-selector', 'value')
     )
     def update_figure(selected_cantons):
-        fig = create_base_figure(df_filtered)
+        fig = create_base_figure(df_filtered, canton_names)
         
-        if not selected_cantons:
+        if not selected_cantons:  # If no cantons selected, return all grey
             return fig
-        
-        # Update traces based on selected cantons.
+            
+        # Get the indices of selected cantons
         cantons = sorted(df_filtered['kanton'].unique())
         canton_to_idx = {canton: idx for idx, canton in enumerate(cantons)}
         
+        # Color scale for highlighted cantons
+        COLOR_SCALE = [
+            '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
+            '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf'
+        ]
+        
+        # Update visibility and colors
         for canton in cantons:
             idx = canton_to_idx[canton]
+            color_idx = idx % len(COLOR_SCALE)
+            color = COLOR_SCALE[color_idx]
+            
             if canton in selected_cantons:
-                # Hide grey line; show colored line.
-                fig.data[idx * 4].visible = False
-                fig.data[idx * 4 + 1].visible = True
+                # Show colored line, hide grey line
+                fig.data[idx * 3].visible = False      # Grey line
+                fig.data[idx * 3 + 1].visible = True   # Colored line
+                
+                # Update connecting line color
+                fig.data[idx * 3 + 2].line.color = color
+                fig.data[idx * 3 + 2].line.width = 1.5
+                
+                # Update annotation color and weight
+                fig.layout.annotations[idx].font.color = color
+                fig.layout.annotations[idx].font.size = 12
             else:
-                # Show grey line; hide colored line.
-                fig.data[idx * 4].visible = True
-                fig.data[idx * 4 + 1].visible = False
+                # Show grey line, hide colored line
+                fig.data[idx * 3].visible = True       # Grey line
+                fig.data[idx * 3 + 1].visible = False  # Colored line
+                
+                # Reset connecting line
+                fig.data[idx * 3 + 2].line.color = 'rgba(191, 191, 191, 0.5)'  # GREY75
+                fig.data[idx * 3 + 2].line.width = 1
+                
+                # Reset annotation
+                fig.layout.annotations[idx].font.color = '#666666'  # GREY40
+                fig.layout.annotations[idx].font.size = 10
         
         return fig
     

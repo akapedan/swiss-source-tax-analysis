@@ -120,31 +120,36 @@ def filter_data(df):
       - No children (anzahl_kinder == 0)
       - Tarif code 'A'
       - Kirchensteuer 'N'
-      - Taxable income below 14,000 CHF.
+      - Taxable income between 2,000 and 10,000 CHF.
     Also saves the filtered data to CSV.
     """
     df_filtered = df[
         (df['anzahl_kinder'] == 0) &
         (df['tarif_code'] == 'A') &
         (df['kirchensteuer'] == 'N') &
-        (df['steuerbares_einkommen'] < 10_001)
+        (df['steuerbares_einkommen'] <= 30_000)
     ]
     output_filtered = 'output/tar25_cleaned_filtered.csv'
     df_filtered.to_csv(output_filtered, index=False)
     print(f"Filtered data saved to '{output_filtered}'")
     return df_filtered
 
-def create_base_figure(df_filtered, canton_names=None):
+def create_base_figure(df_filtered, canton_names=None, x_min=0, x_max=30000):
     """
     Create an interactive line plot for canton source tax rates using Plotly.
     
     Args:
         df_filtered (pd.DataFrame): Filtered DataFrame containing tax rate data
         canton_names (dict, optional): Mapping of canton codes to full names
+        x_min (int): Minimum income value to display
+        x_max (int): Maximum income value to display
     """
     # Color definitions
-    GREY75 = 'rgba(191, 191, 191, 0.5)'  # Light grey with transparency
+    GREY75 = 'rgba(191, 191, 191, 0.8)'  # Light grey with transparency
     GREY40 = '#666666'
+    
+    # Define consistent font
+    font_family = 'Arial, Helvetica, sans-serif'
     
     # Color scale for highlighted cantons
     COLOR_SCALE = [
@@ -159,10 +164,19 @@ def create_base_figure(df_filtered, canton_names=None):
     # Create figure
     fig = go.Figure()
 
-    # Calculate label positions
-    x_max = 10000  # Set fixed x_max at 10,000
-    y_max = df_filtered['steuer_prozent'].max()
-    y_min = df_filtered['steuer_prozent'].min()
+    # Calculate y range based on the selected income range
+    income_filtered_df = df_filtered[
+        (df_filtered['steuerbares_einkommen'] >= x_min) & 
+        (df_filtered['steuerbares_einkommen'] <= x_max)
+    ]
+    
+    if len(income_filtered_df) > 0:
+        y_max = income_filtered_df['steuer_prozent'].max()
+        y_min = income_filtered_df['steuer_prozent'].min()
+    else:
+        # Fallback if no data in range
+        y_max = df_filtered['steuer_prozent'].max()
+        y_min = df_filtered['steuer_prozent'].min()
     
     # Create sorted list of cantons (for data mapping)
     cantons = sorted(df_filtered['kanton'].unique())
@@ -220,36 +234,42 @@ def create_base_figure(df_filtered, canton_names=None):
         # Find the display point for this canton
         display_point = next(p for p in display_points if p['canton'] == canton)
         
-        # Main line (grey) - limit to x_max
+        # Main line (grey) - limit to x_max and start from x_min
         fig.add_trace(
             go.Scatter(
-                x=data[data['steuerbares_einkommen'] <= x_max]['steuerbares_einkommen'],
-                y=data[data['steuerbares_einkommen'] <= x_max]['steuer_prozent'],
+                x=data[(data['steuerbares_einkommen'] >= x_min) & 
+                       (data['steuerbares_einkommen'] <= x_max)]['steuerbares_einkommen'],
+                y=data[(data['steuerbares_einkommen'] >= x_min) & 
+                       (data['steuerbares_einkommen'] <= x_max)]['steuer_prozent'],
                 name=canton,
                 line=dict(
                     color=GREY75,
                     width=1.5
                 ),
                 hovertemplate="Canton: %{text}<br>Income: %{x:,.0f} CHF<br>Tax Rate: %{y:.2f}%<extra></extra>",
-                text=[canton] * len(data[data['steuerbares_einkommen'] <= x_max]),
+                text=[canton] * len(data[(data['steuerbares_einkommen'] >= x_min) & 
+                                        (data['steuerbares_einkommen'] <= x_max)]),
                 legendgroup=canton,
                 mode='lines',
                 visible=True
             )
         )
         
-        # Colored version of the line (initially hidden) - limit to x_max
+        # Colored version of the line (initially hidden) - limit to x_max and start from x_min
         fig.add_trace(
             go.Scatter(
-                x=data[data['steuerbares_einkommen'] <= x_max]['steuerbares_einkommen'],
-                y=data[data['steuerbares_einkommen'] <= x_max]['steuer_prozent'],
+                x=data[(data['steuerbares_einkommen'] >= x_min) & 
+                       (data['steuerbares_einkommen'] <= x_max)]['steuerbares_einkommen'],
+                y=data[(data['steuerbares_einkommen'] >= x_min) & 
+                       (data['steuerbares_einkommen'] <= x_max)]['steuer_prozent'],
                 name=canton + "_colored",
                 line=dict(
                     color=COLOR_SCALE[idx % len(COLOR_SCALE)],
                     width=2
                 ),
                 hovertemplate="Canton: %{text}<br>Income: %{x:,.0f} CHF<br>Tax Rate: %{y:.2f}%<extra></extra>",
-                text=[canton] * len(data[data['steuerbares_einkommen'] <= x_max]),
+                text=[canton] * len(data[(data['steuerbares_einkommen'] >= x_min) & 
+                                        (data['steuerbares_einkommen'] <= x_max)]),
                 legendgroup=canton,
                 mode='lines',
                 visible=False,
@@ -282,15 +302,16 @@ def create_base_figure(df_filtered, canton_names=None):
             showarrow=False,
             font=dict(
                 color=GREY40,
-                size=10
+                size=10,
+                family=font_family
             ),
             xanchor='left',  # Explicitly set left alignment
             yanchor='middle'
         )
 
-    # Create custom grid lines that stop at x_max
+    # Create custom grid lines that start at x_min and stop at x_max
     x_grid_lines = []
-    for x in np.linspace(0, x_max, 6):  # 6 grid lines from 0 to x_max
+    for x in np.linspace(x_min, x_max, 5):  # 5 grid lines from x_min to x_max
         x_grid_lines.append(
             dict(
                 type="line",
@@ -310,7 +331,7 @@ def create_base_figure(df_filtered, canton_names=None):
         y_grid_lines.append(
             dict(
                 type="line",
-                x0=0,
+                x0=x_min,  # Start at x_min
                 y0=y,
                 x1=x_max,  # Stop at x_max
                 y1=y,
@@ -323,42 +344,45 @@ def create_base_figure(df_filtered, canton_names=None):
     
     # Calculate the maximum label length to set appropriate right margin
     max_label_length = max([len(canton_names.get(canton, canton)) for canton in cantons])
-    right_margin = max_label_length * 2 + 20  # Reduced multiplier and base value
+    right_margin = max_label_length + 20  # Reduced multiplier and base value
     
     # Update layout
     fig.update_layout(
         plot_bgcolor='rgba(250, 250, 250, 1)',
         paper_bgcolor='rgba(250, 250, 250, 1)',
         title=dict(
-            text='Source Tax Rate Progression by Canton (No Children, Alleinstehend)',
+            text=f'Source Tax Rate Progression by Canton (2025) - Income Range: {x_min:,} - {x_max:,} CHF',
             x=0.5,
-            font=dict(size=14, color=GREY40)
+            font=dict(size=18, color=GREY40, family=font_family)
         ),
         xaxis=dict(
             title=dict(
                 text='Monthly Taxable Income (CHF)',
-                font=dict(size=12, color=GREY40)
+                font=dict(size=12, color=GREY40, family=font_family)
             ),
             showgrid=False,  # Disable default grid
             zeroline=False,
             tickformat=',d',
-            range=[0, x_max * 1.22]  # Reduced range to minimize extra space
+            range=[x_min * 0.95, x_max * 1.22],  # Start from x_min with a small buffer
+            tickfont=dict(family=font_family)
         ),
         yaxis=dict(
             title=dict(
                 text='Source Tax Rate (%)',
-                font=dict(size=12, color=GREY40)
+                font=dict(size=12, color=GREY40, family=font_family)
             ),
             showgrid=False,  # Disable default grid
             zeroline=False,
-            range=[y_min * 0.85 - padding, y_max * 1.15 + padding]  # Add extra padding
+            range=[y_min * 0.85 - padding, y_max * 1.15 + padding],  # Add extra padding
+            tickfont=dict(family=font_family)
         ),
         showlegend=False,
         hovermode='closest',
         height=800,
         width=1600,
         margin=dict(t=100, l=50, r=right_margin, b=50),  # Reduced right margin
-        shapes=x_grid_lines + y_grid_lines  # Add custom grid lines
+        shapes=x_grid_lines + y_grid_lines,  # Add custom grid lines
+        font=dict(family=font_family)
     )
     
     # Add a vertical line at x_max to visually separate the grid from the labels
@@ -374,10 +398,14 @@ def create_base_figure(df_filtered, canton_names=None):
         )
     )
     
-    # Add x-axis tick at 10,000
+    # Add x-axis ticks based on the range
+    tick_count = 5
+    tick_values = np.linspace(x_min, x_max, tick_count)
+    tick_texts = [f'{int(val):,}' for val in tick_values]
+    
     fig.update_xaxes(
-        tickvals=[0, 2000, 4000, 6000, 8000, 10000],
-        ticktext=['0', '2,000', '4,000', '6,000', '8,000', '10,000']
+        tickvals=tick_values,
+        ticktext=tick_texts
     )
     
     return fig
@@ -413,58 +441,230 @@ def create_dash_app(df_filtered):
         'ZH': 'Zurich (ZH)'
     }
     
-    app = Dash(__name__)
+    # Language region mapping
+    language_regions = {
+        'German': ['AG', 'AI', 'AR', 'BE', 'BL', 'BS', 'GL', 'GR', 'LU', 'NW', 'OW', 'SG', 'SH', 'SO', 'SZ', 'TG', 'UR', 'ZG', 'ZH'],
+        'French': ['FR', 'GE', 'JU', 'NE', 'VD', 'VS'],
+        'Italian': ['TI'],
+        'Multilingual': ['BE', 'FR', 'GR', 'VS']  # These cantons appear in multiple regions
+    }
+    
+    # Add custom CSS for hover effects
+    app = Dash(__name__, 
+               external_stylesheets=['https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&display=swap'])
+    
+    # Custom CSS for hover effects
+    app.index_string = '''
+    <!DOCTYPE html>
+    <html>
+        <head>
+            {%metas%}
+            <title>{%title%}</title>
+            {%favicon%}
+            {%css%}
+            <style>
+                .dash-dropdown .Select-control:hover {
+                    border-color: #2196F3;
+                }
+                .dash-dropdown .Select-menu-outer {
+                    border-radius: 4px;
+                    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+                }
+                .dash-dropdown .VirtualizedSelectOption {
+                    transition: background-color 0.2s;
+                }
+                .dash-dropdown .VirtualizedSelectFocusedOption {
+                    background-color: rgba(33, 150, 243, 0.1);
+                }
+                .rc-slider-track {
+                    background-color: #2196F3;
+                }
+                .rc-slider-handle {
+                    border-color: #2196F3;
+                }
+                .rc-slider-handle:hover {
+                    border-color: #0b7dda;
+                }
+                .rc-slider-handle:active {
+                    border-color: #0b7dda;
+                    box-shadow: 0 0 5px #0b7dda;
+                }
+            </style>
+        </head>
+        <body>
+            {%app_entry%}
+            <footer>
+                {%config%}
+                {%scripts%}
+                {%renderer%}
+            </footer>
+        </body>
+    </html>
+    '''
     
     # Create sorted list of cantons
     cantons = sorted(df_filtered['kanton'].unique())
     
+    # Define consistent font style
+    font_family = "'Open Sans', Arial, Helvetica, sans-serif"
+    font_color = '#666666'  # GREY40
+    
+    # Minimalist dropdown style
+    dropdown_style = {
+        'width': '100%',
+        'backgroundColor': 'white',
+        'fontFamily': font_family,
+        'color': font_color,
+        'border': '1px solid #e0e0e0',
+        'borderRadius': '4px',
+        'transition': 'border-color 0.3s'
+    }
+    
+    # Get min and max income values from the data
+    min_income = int(df_filtered['steuerbares_einkommen'].min())
+    max_income = int(df_filtered['steuerbares_einkommen'].max())
+    
     # Add custom CSS styling
     app.layout = html.Div([
-        html.Div([  # Container for dropdown
-            dcc.Dropdown(
-                id='canton-selector',
-                options=[
-                    {'label': canton_names.get(canton, canton), 'value': canton} 
-                    for canton in cantons
-                ],
-                multi=True,
-                placeholder="Select cantons...",
-                style={
-                    'width': '400px',
-                    'backgroundColor': 'white',
-                },
-                optionHeight=35,
-                maxHeight=600,
-            )
+        html.Div([
+            # Left column for dropdowns and slider
+            html.Div([
+                # Income range slider
+                html.Div([
+                    html.Label("Select Income Range (CHF):", 
+                        style={
+                            'marginBottom': '8px',
+                            'fontFamily': font_family,
+                            'color': font_color,
+                            'display': 'block',
+                            'whiteSpace': 'nowrap'
+                        }
+                    ),
+                    dcc.RangeSlider(
+                        id='income-slider',
+                        min=min_income,
+                        max=max_income,
+                        step=500,
+                        marks={
+                            min_income: f'{min_income:,}',
+                            max_income: f'{max_income:,}'
+                        },
+                        value=[min_income, max_income],  # Default to full range
+                        allowCross=False,
+                        tooltip={"placement": "bottom", "always_visible": True}
+                    ),
+                ], style={'marginBottom': '25px'}),
+                
+                # Language region dropdown
+                html.Div([
+                    html.Label("Select Language Region:", 
+                        style={
+                            'marginBottom': '8px',
+                            'fontFamily': font_family,
+                            'color': font_color,
+                            'display': 'block',
+                            'whiteSpace': 'nowrap'
+                        }
+                    ),
+                    dcc.Dropdown(
+                        id='region-selector',
+                        options=[
+                            {'label': region, 'value': region} 
+                            for region in language_regions.keys()
+                        ],
+                        placeholder="Select language region...",
+                        style=dropdown_style,
+                    )
+                ], style={'marginBottom': '20px'}),
+                
+                # Canton selector dropdown
+                html.Div([
+                    html.Label("Select Cantons:", 
+                        style={
+                            'marginBottom': '8px',
+                            'fontFamily': font_family,
+                            'color': font_color,
+                            'display': 'block',
+                            'whiteSpace': 'nowrap'
+                        }
+                    ),
+                    dcc.Dropdown(
+                        id='canton-selector',
+                        options=[
+                            {'label': canton_names.get(canton, canton), 'value': canton} 
+                            for canton in cantons
+                        ],
+                        multi=True,
+                        placeholder="Select cantons...",
+                        style=dropdown_style,
+                        optionHeight=35,
+                        maxHeight=600,
+                    )
+                ])
+            ], style={
+                'width': '300px',
+                'padding': '20px',
+                'boxSizing': 'border-box',
+                'backgroundColor': '#f9f9f9'
+            }),
+            
+            # Right column for the plot
+            html.Div([
+                dcc.Graph(
+                    id='canton-plot',
+                    figure=create_base_figure(df_filtered, canton_names),
+                    style={
+                        'height': '800px',
+                        'width': '100%'
+                    }
+                )
+            ], style={
+                'flex': '1',
+                'paddingLeft': '10px',
+                'boxSizing': 'border-box'
+            })
         ], style={
-            'width': '100%',
             'display': 'flex',
-            'justifyContent': 'flex-end',
-            'marginBottom': '20px',
-            'marginRight': '350px'  # Increased to match the figure margin
-        }),
-        dcc.Graph(
-            id='canton-plot',
-            figure=create_base_figure(df_filtered, canton_names),
-            style={
-                'height': '800px',
-                'width': '1600px'  # Increased to match the figure width
-            }
-        )
+            'flexDirection': 'row',
+            'width': '100%'
+        })
     ], style={
         'width': '100%',
-        'display': 'flex',
-        'flexDirection': 'column',
-        'alignItems': 'center',
-        'padding': '20px'
+        'fontFamily': font_family
     })
     
     @app.callback(
-        Output('canton-plot', 'figure'),
-        Input('canton-selector', 'value')
+        Output('canton-selector', 'value'),
+        Input('region-selector', 'value')
     )
-    def update_figure(selected_cantons):
-        fig = create_base_figure(df_filtered, canton_names)
+    def update_canton_selection(selected_region):
+        if not selected_region:
+            return []
+        
+        # Return list of cantons in the selected language region
+        return language_regions.get(selected_region, [])
+    
+    @app.callback(
+        Output('canton-plot', 'figure'),
+        [Input('canton-selector', 'value'),
+         Input('region-selector', 'value'),
+         Input('income-slider', 'value')]
+    )
+    def update_figure(selected_cantons, selected_region, income_range):
+        # Unpack the income range
+        x_min, x_max = income_range
+        
+        # Create the base figure with the selected income range
+        fig = create_base_figure(df_filtered, canton_names, x_min=x_min, x_max=x_max)
+        
+        # Update the title to include the year and income range
+        fig.update_layout(
+            title=dict(
+                text=f'Source Tax Rate Progression by Canton (2025) - Income Range: {x_min:,} - {x_max:,} CHF',
+                x=0.5,
+                font=dict(size=18, color='#666666', family=font_family)
+            )
+        )
         
         if not selected_cantons:  # If no cantons selected, return all grey
             return fig
@@ -497,8 +697,9 @@ def create_dash_app(df_filtered):
                 # Update annotation color and weight
                 fig.layout.annotations[idx].font.color = color
                 fig.layout.annotations[idx].font.size = 12
+                fig.layout.annotations[idx].font.family = font_family
             else:
-                # Show grey line, hide colored line
+                # Show grey line, hide grey line
                 fig.data[idx * 3].visible = True       # Grey line
                 fig.data[idx * 3 + 1].visible = False  # Colored line
                 
@@ -509,6 +710,7 @@ def create_dash_app(df_filtered):
                 # Reset annotation
                 fig.layout.annotations[idx].font.color = '#666666'  # GREY40
                 fig.layout.annotations[idx].font.size = 10
+                fig.layout.annotations[idx].font.family = font_family
         
         return fig
     

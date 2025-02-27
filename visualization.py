@@ -176,25 +176,29 @@ def create_base_figure(df_filtered, canton_names=None, x_min=0, x_max=30000):
             yanchor='middle'
         )
 
-    # Create custom grid lines that start at x_min and stop at x_max
+    # Create tick values for x and y axes with fewer points
+    x_tick_values = np.linspace(x_min, x_max, 6)  # Reduce from 5 to 6 evenly spaced ticks
+    y_tick_values = np.linspace(y_min * 0.85, y_max * 1.15, 5)  # Reduce from 10 to 5 ticks
+
+    # Create custom grid lines that align with ticks
     x_grid_lines = []
-    for x in np.linspace(x_min, x_max, 5):  # 5 grid lines from x_min to x_max
+    for x in x_tick_values:
         x_grid_lines.append(
             dict(
                 type="line",
                 x0=x,
-                y0=y_min * 0.85,
+                y0=y_min * 0.85 - padding,
                 x1=x,
-                y1=y_max * 1.15,
+                y1=y_max * 1.15 + padding,
                 line=dict(
                     color="rgba(232, 232, 232, 1)",
                     width=1
                 )
             )
         )
-    
+
     y_grid_lines = []
-    for y in np.linspace(y_min * 0.85, y_max * 1.15, 10):  # 10 horizontal grid lines
+    for y in y_tick_values:
         y_grid_lines.append(
             dict(
                 type="line",
@@ -208,7 +212,7 @@ def create_base_figure(df_filtered, canton_names=None, x_min=0, x_max=30000):
                 )
             )
         )
-    
+
     # Calculate the maximum label length to set appropriate right margin
     max_label_length = max([len(canton_names.get(canton, canton)) for canton in cantons])
     right_margin = max_label_length + 20  # Reduced multiplier and base value
@@ -220,28 +224,33 @@ def create_base_figure(df_filtered, canton_names=None, x_min=0, x_max=30000):
         title=dict(
             text=f'Source Tax Rate Progression by Canton (2025) - Income Range: {x_min:,} - {x_max:,} CHF',
             x=0.5,
-            font=dict(size=18, color=GREY40, family=font_family)
+            font=dict(size=18, color='black', family=font_family)
         ),
         xaxis=dict(
             title=dict(
                 text='Monthly Taxable Income (CHF)',
-                font=dict(size=12, color=GREY40, family=font_family)
+                font=dict(size=12, color='black', family=font_family)
             ),
             showgrid=False,  # Disable default grid
             zeroline=False,
             tickformat=',d',
             range=[x_min * 0.95, x_max * 1.22],  # Start from x_min with a small buffer
-            tickfont=dict(family=font_family)
+            tickfont=dict(family=font_family, color='black'),
+            tickvals=x_tick_values,
+            ticktext=[f'{int(val):,}' for val in x_tick_values]
         ),
         yaxis=dict(
             title=dict(
                 text='Source Tax Rate (%)',
-                font=dict(size=12, color=GREY40, family=font_family)
+                font=dict(size=12, color='black', family=font_family)
             ),
             showgrid=False,  # Disable default grid
             zeroline=False,
             range=[y_min * 0.85 - padding, y_max * 1.15 + padding],  # Add extra padding
-            tickfont=dict(family=font_family)
+            tickfont=dict(family=font_family, color='black'),
+            tickvals=y_tick_values,
+            ticktext=[f'{val:.1f}%' for val in y_tick_values],
+            ticksuffix=''  # Remove default ticksuffix since we added % to each label
         ),
         showlegend=False,
         hovermode='closest',
@@ -262,16 +271,6 @@ def create_base_figure(df_filtered, canton_names=None, x_min=0, x_max=30000):
             color="rgba(232, 232, 232, 1)",
             width=1
         )
-    )
-    
-    # Add x-axis ticks based on the range
-    tick_count = 5
-    tick_values = np.linspace(x_min, x_max, tick_count)
-    tick_texts = [f'{int(val):,}' for val in tick_values]
-    
-    fig.update_xaxes(
-        tickvals=tick_values,
-        ticktext=tick_texts
     )
     
     return fig

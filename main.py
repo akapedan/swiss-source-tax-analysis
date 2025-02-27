@@ -277,7 +277,7 @@ def create_dash_app(df_filtered):
                         style={
                             'marginBottom': '8px',
                             'fontFamily': font_family,
-                            'color': font_color,
+                            'color': 'black',
                             'display': 'block',
                             'whiteSpace': 'nowrap'
                         }
@@ -320,7 +320,7 @@ def create_dash_app(df_filtered):
                         style={
                             'marginBottom': '8px',
                             'fontFamily': font_family,
-                            'color': font_color,
+                            'color': 'black',
                             'display': 'block',
                             'whiteSpace': 'nowrap'
                         }
@@ -346,7 +346,7 @@ def create_dash_app(df_filtered):
                         style={
                             'marginBottom': '8px',
                             'fontFamily': font_family,
-                            'color': font_color,
+                            'color': 'black',
                             'display': 'block',
                             'whiteSpace': 'nowrap'
                         }
@@ -371,7 +371,7 @@ def create_dash_app(df_filtered):
                         style={
                             'marginBottom': '8px',
                             'fontFamily': font_family,
-                            'color': font_color,
+                            'color': 'black',
                             'display': 'block',
                             'whiteSpace': 'nowrap'
                         }
@@ -394,7 +394,7 @@ def create_dash_app(df_filtered):
                         style={
                             'marginBottom': '8px',
                             'fontFamily': font_family,
-                            'color': font_color,
+                            'color': 'black',
                             'display': 'block',
                             'whiteSpace': 'nowrap'
                         }
@@ -417,7 +417,7 @@ def create_dash_app(df_filtered):
                         style={
                             'marginBottom': '8px',
                             'fontFamily': font_family,
-                            'color': font_color,
+                            'color': 'black',
                             'display': 'block',
                             'whiteSpace': 'nowrap'
                         }
@@ -439,7 +439,7 @@ def create_dash_app(df_filtered):
                         style={
                             'marginBottom': '8px',
                             'fontFamily': font_family,
-                            'color': font_color,
+                            'color': 'black',
                             'display': 'block',
                             'whiteSpace': 'nowrap'
                         }
@@ -648,14 +648,18 @@ def create_dash_app(df_filtered):
                 xaxis=dict(
                     title=dict(
                         text=translations[language]['monthly_income'],
-                        font=dict(size=12, color='#666666', family=font_family)
-                    )
+                        font=dict(size=12, color='#666666', family=font_family, weight='bold')
+                    ),
+                    # Let the base figure handle the ticks to ensure grid alignment
+                    showgrid=False
                 ),
                 yaxis=dict(
                     title=dict(
                         text=translations[language]['tax_rate'],
-                        font=dict(size=12, color='#666666', family=font_family)
-                    )
+                        font=dict(size=12, color='#666666', family=font_family, weight='bold')
+                    ),
+                    # Remove ticksuffix since we're adding % in the base figure
+                    ticksuffix=''
                 )
             )
             return fig
@@ -674,19 +678,23 @@ def create_dash_app(df_filtered):
             title=dict(
                 text=f"{translations[language]['source_tax_progression']} - {tarif_label} - {church_tax_label}",
                 x=0.5,
-                font=dict(size=18, color='#666666', family=font_family)
+                font=dict(size=18, color='black', family=font_family)
             ),
             xaxis=dict(
                 title=dict(
                     text=translations[language]['monthly_income'],
-                    font=dict(size=12, color='#666666', family=font_family)
-                )
+                    font=dict(size=12, color='black', family=font_family, weight='bold')
+                ),
+                # Let the base figure handle the ticks to ensure grid alignment
+                showgrid=False
             ),
             yaxis=dict(
                 title=dict(
                     text=translations[language]['tax_rate'],
-                    font=dict(size=12, color='#666666', family=font_family)
-                )
+                    font=dict(size=12, color='black', family=font_family, weight='bold')
+                ),
+                # Remove ticksuffix since we're adding % in the base figure
+                ticksuffix=''
             )
         )
         

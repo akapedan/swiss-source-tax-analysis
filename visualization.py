@@ -245,11 +245,10 @@ def create_base_figure(df_filtered, canton_names=None, x_min=0, x_max=30000):
         ),
         showlegend=False,
         hovermode='closest',
-        height=800,
-        width=1600,
-        margin=dict(t=100, l=50, r=right_margin, b=50),  # Reduced right margin
+        margin=dict(t=100, l=50, r=right_margin, b=50),
         shapes=x_grid_lines + y_grid_lines,  # Add custom grid lines
-        font=dict(family=font_family)
+        font=dict(family=font_family),
+        autosize=True  # Enable autosize for responsive behavior
     )
     
     # Add a vertical line at x_max to visually separate the grid from the labels

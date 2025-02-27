@@ -3,15 +3,8 @@ import subprocess
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
-from pandarallel import pandarallel
 from dash import Dash, dcc, html, callback_context
 from dash.dependencies import Input, Output, State
-
-# Initialize pandarallel for parallel processing.
-pandarallel.initialize()
-
-# Global flag to control data recreation
-RECREATE_DATA = False  # Set to True to reprocess all TXT files, False to use existing CSV
 
 # Import modularized components
 from data_processing import process_txt_files, load_data, transform_data, filter_data
@@ -20,6 +13,9 @@ from translations import (
     get_translations, get_tarif_translations, 
     get_kirchensteuer_translations, get_language_region_translations
 )
+
+# Global flag to control data recreation
+RECREATE_DATA = False  # Set to True to reprocess all TXT files, False to use existing CSV
 
 def create_dash_app(df_filtered):
     # Canton name mapping
@@ -426,23 +422,34 @@ def create_dash_app(df_filtered):
                     id='canton-plot',
                     figure=create_base_figure(df_filtered, canton_names),
                     style={
-                        'height': '800px',
-                        'width': '100%'
+                        'height': '100%',  # Fill the height of the container
+                        'width': '100%'    # Fill the width of the container
+                    },
+                    config={
+                        'responsive': True  # Enable responsive resizing
                     }
                 )
             ], style={
                 'flex': '1',
                 'paddingLeft': '10px',
-                'boxSizing': 'border-box'
+                'boxSizing': 'border-box',
+                'height': '100%'  # Make sure the container takes full height
             })
         ], style={
             'display': 'flex',
             'flexDirection': 'row',
-            'width': '100%'
+            'width': 'calc(100% - 4cm)',  # 2cm margin on left and right
+            'height': 'calc(100vh - 4cm)', # 2cm margin on top and bottom
+            'margin': '2cm',              # 2cm margin on all sides
+            'boxSizing': 'border-box'
         })
     ], style={
         'width': '100%',
-        'fontFamily': font_family
+        'height': '100vh',
+        'fontFamily': font_family,
+        'display': 'flex',
+        'padding': '0',
+        'margin': '0'
     })
     
     # Callback to update language when a flag is clicked
@@ -676,7 +683,7 @@ def create_dash_app(df_filtered):
 
 def main():
     # Load and process data.
-    df = load_data()
+    df = load_data(recreate_data=RECREATE_DATA)
     df = transform_data(df)
     df_filtered = filter_data(df)
     

@@ -20,8 +20,12 @@ def create_base_figure(df_filtered, canton_names=None, x_min=0, x_max=30000):
     
     # Color scale for highlighted cantons
     COLOR_SCALE = [
-        '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
-        '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf'
+        '#9A5CB4', '#3F8EFC', '#906C33', '#7B3A96', '#5D5D5D', 
+        '#3E8E75', '#5EFF5E', '#F0E68C', '#888888', '#4CA64C', 
+        '#A0522D', '#DDA0DD', '#FF00FF', '#000080', '#FFA500', 
+        '#FFC0CB', '#9ACD32', '#FF0000', '#40E0D0', '#48D1CC', 
+        '#8A2BE2', '#C71585', '#FF1493', '#8B0000', '#FFD32C', 
+        '#FF69B4'
     ]
     
     # If no canton names provided, use the codes
@@ -237,7 +241,7 @@ def create_base_figure(df_filtered, canton_names=None, x_min=0, x_max=30000):
             range=[x_min * 0.95, x_max * 1.22],  # Start from x_min with a small buffer
             tickfont=dict(family=font_family, color='black'),
             tickvals=x_tick_values,
-            ticktext=[f'{int(val):,}' for val in x_tick_values]
+            ticktext=[f"{int(val):,}".replace(',', "'") + " CHF" for val in x_tick_values]
         ),
         yaxis=dict(
             title=dict(
@@ -249,7 +253,7 @@ def create_base_figure(df_filtered, canton_names=None, x_min=0, x_max=30000):
             range=[y_min * 0.85 - padding, y_max * 1.15 + padding],  # Add extra padding
             tickfont=dict(family=font_family, color='black'),
             tickvals=y_tick_values,
-            ticktext=[f'{val:.1f}%' for val in y_tick_values],
+            ticktext=[f'{val:.1f}%' for val in y_tick_values],  # Add % symbol to tick labels
             ticksuffix=''  # Remove default ticksuffix since we added % to each label
         ),
         showlegend=False,

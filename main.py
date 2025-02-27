@@ -678,12 +678,12 @@ def create_dash_app(df_filtered):
             title=dict(
                 text=f"{translations[language]['source_tax_progression']} - {tarif_label} - {church_tax_label}",
                 x=0.5,
-                font=dict(size=18, color='black', family=font_family)
+                font=dict(size=18, color='#666666', family=font_family)
             ),
             xaxis=dict(
                 title=dict(
                     text=translations[language]['monthly_income'],
-                    font=dict(size=12, color='black', family=font_family, weight='bold')
+                    font=dict(size=12, color='black', family=font_family, weight='bold')  # Changed to black
                 ),
                 # Let the base figure handle the ticks to ensure grid alignment
                 showgrid=False
@@ -691,24 +691,25 @@ def create_dash_app(df_filtered):
             yaxis=dict(
                 title=dict(
                     text=translations[language]['tax_rate'],
-                    font=dict(size=12, color='black', family=font_family, weight='bold')
+                    font=dict(size=12, color='black', family=font_family, weight='bold')  # Changed to black
                 ),
                 # Remove ticksuffix since we're adding % in the base figure
                 ticksuffix=''
             )
         )
         
-        if not selected_cantons:  # If no cantons selected, return all grey
-            return fig
-            
         # Get the indices of selected cantons
         cantons = sorted(df_filtered_view['kanton'].unique())
         canton_to_idx = {canton: idx for idx, canton in enumerate(cantons)}
         
         # Color scale for highlighted cantons
         COLOR_SCALE = [
-            '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
-            '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf'
+            '#9A5CB4', '#3F8EFC', '#906C33', '#7B3A96', '#5D5D5D', 
+            '#3E8E75', '#5EFF5E', '#F0E68C', '#888888', '#4CA64C', 
+            '#A0522D', '#DDA0DD', '#FF00FF', '#000080', '#FFA500', 
+            '#FFC0CB', '#9ACD32', '#FF0000', '#40E0D0', '#48D1CC', 
+            '#8A2BE2', '#C71585', '#FF1493', '#8B0000', '#FFD32C', 
+            '#FF69B4'
         ]
         
         # Update visibility and colors

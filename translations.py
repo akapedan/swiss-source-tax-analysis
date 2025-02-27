@@ -5,7 +5,7 @@ def get_translations():
     return {
         'en': {
             'income_range': "Select Income Range (CHF):",
-            'tarif_code': "Select Tarif Code:",
+            'tarif_code': "Tariff Code:",
             'church_tax': "Church Tax Option:",
             'number_of_children': "Number of Children:",
             'language_region': "Select Language Region:",
@@ -14,24 +14,24 @@ def get_translations():
             'tax_rate': "Source Tax Rate (%)",
             'source_tax_progression': "Source Tax Rate Progression by Canton (2025)",
             'income_range_text': "Income Range",
-            'no_data_available': "No data available for the selected combination of tarif code and church tax option"
+            'no_data_available': "No data available for the selected combination of tariff code and church tax option"
         },
         'de': {
             'income_range': "Einkommensbereich auswählen (CHF):",
-            'tarif_code': "Tarifcode auswählen:",
+            'tarif_code': "Tarifcode:",
             'church_tax': "Kirchensteuer-Option:",
             'number_of_children': "Anzahl Kinder:",
             'language_region': "Sprachregion auswählen:",
             'select_cantons': "Kantone auswählen:",
             'monthly_income': "Monatliches steuerbares Einkommen (CHF)",
-            'tax_rate': "Quellensteuer-Satz (%)",
-            'source_tax_progression': "Quellensteuer-Progression nach Kanton (2025)",
+            'tax_rate': "Quellensteuersatz (%)",
+            'source_tax_progression': "Quellensteuersatz-Progression nach Kanton (2025)",
             'income_range_text': "Einkommensbereich",
-            'no_data_available': "Keine Daten verfügbar für die ausgewählte Kombination von Tarifcode und Kirchensteuer-Option"
+            'no_data_available': "Keine Daten verfügbar für die ausgewählte Kombination aus Tarifcode und Kirchensteuer-Option"
         },
         'fr': {
             'income_range': "Sélectionner la plage de revenus (CHF):",
-            'tarif_code': "Sélectionner le code tarifaire:",
+            'tarif_code': "Code tarifaire:",
             'church_tax': "Option d'impôt ecclésiastique:",
             'number_of_children': "Nombre d'enfants:",
             'language_region': "Sélectionner la région linguistique:",
@@ -44,7 +44,7 @@ def get_translations():
         },
         'it': {
             'income_range': "Seleziona intervallo di reddito (CHF):",
-            'tarif_code': "Seleziona codice tariffa:",
+            'tarif_code': "Codice tariffa:",
             'church_tax': "Opzione imposta ecclesiastica:",
             'number_of_children': "Numero di figli:",
             'language_region': "Seleziona regione linguistica:",

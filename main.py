@@ -478,7 +478,14 @@ def create_dash_app(df_filtered):
                         'width': '100%'    # Fill the width of the container
                     },
                     config={
-                        'responsive': True  # Enable responsive resizing
+                        'displayModeBar': True,  # Always show the modebar instead of on hover
+                        'toImageButtonOptions': {
+                            'format': 'png',
+                            'filename': 'source_tax_visualization',
+                            'height': 800,
+                            'width': 1200,
+                            'scale': 2  # Higher resolution
+                        }
                     }
                 )
             ], style={
@@ -664,8 +671,20 @@ def create_dash_app(df_filtered):
             )
             return fig
         
-        # Create the base figure with the selected income range and filters
-        fig = create_base_figure(df_filtered_view, canton_names, x_min=x_min, x_max=x_max)
+        # Get translations for the selected language
+        translations = get_translations()[language]
+        
+        # Pass translations to create_base_figure
+        fig = create_base_figure(
+            df_filtered_view, 
+            canton_names, 
+            income_range[0], 
+            income_range[1], 
+            tarif_code, 
+            kirchensteuer, 
+            children,
+            translations
+        )
         
         # Get the church tax label for the title
         church_tax_label = kirchensteuer_translations[language].get(kirchensteuer, '')
@@ -676,13 +695,13 @@ def create_dash_app(df_filtered):
         # Update the title to include all parameters and use the correct language
         fig.update_layout(
             title=dict(
-                text=f"{translations[language]['source_tax_progression']} - {tarif_label} - {church_tax_label}",
+                text=f"{translations['source_tax_progression']}",
                 x=0.5,
-                font=dict(size=18, color='#666666', family=font_family)
+                font=dict(size=18, color='black', family=font_family, weight='bold')  # Changed to black and bold
             ),
             xaxis=dict(
                 title=dict(
-                    text=translations[language]['monthly_income'],
+                    text=translations['monthly_income'],
                     font=dict(size=12, color='black', family=font_family, weight='bold')  # Changed to black
                 ),
                 # Let the base figure handle the ticks to ensure grid alignment
@@ -690,7 +709,7 @@ def create_dash_app(df_filtered):
             ),
             yaxis=dict(
                 title=dict(
-                    text=translations[language]['tax_rate'],
+                    text=translations['tax_rate'],
                     font=dict(size=12, color='black', family=font_family, weight='bold')  # Changed to black
                 ),
                 # Remove ticksuffix since we're adding % in the base figure

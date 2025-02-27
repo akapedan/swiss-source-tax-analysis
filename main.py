@@ -114,6 +114,35 @@ def create_dash_app(df_filtered):
             {%favicon%}
             {%css%}
             <style>
+                /* Global left alignment for all dropdown elements */
+                .Select-option, 
+                .Select-value, 
+                .Select-control, 
+                .Select-placeholder,
+                .Select-input,
+                .Select-value-label,
+                .VirtualizedSelectOption,
+                .VirtualizedSelectFocusedOption,
+                .Select-menu-outer div,
+                .Select-menu-outer span,
+                .Select-menu-outer * {
+                    text-align: left !important;
+                }
+                
+                /* Override any potential center alignment */
+                #tarif-selector .Select-option,
+                #tarif-selector .VirtualizedSelectOption,
+                #tarif-selector .VirtualizedSelectFocusedOption,
+                #tarif-selector .Select-menu-outer div,
+                #tarif-selector .Select-menu-outer span,
+                #tarif-selector .Select-menu-outer * {
+                    text-align: left !important;
+                    display: block !important;
+                    margin-left: 0 !important;
+                    margin-right: auto !important;
+                }
+                
+                /* Rest of your existing styles */
                 .dash-dropdown .Select-control:hover {
                     border-color: #2196F3;
                 }
@@ -147,8 +176,8 @@ def create_dash_app(df_filtered):
                 }
                 /* Custom styling for tarif dropdown */
                 #tarif-selector .Select-menu-outer {
-                    width: 450px !important;
-                    max-width: 450px !important;
+                    width: 550px !important;
+                    max-width: 550px !important;
                     left: 0;
                 }
                 #tarif-selector .Select-option {
@@ -156,10 +185,6 @@ def create_dash_app(df_filtered):
                     padding: 12px 16px !important;
                     border-bottom: 1px solid #f0f0f0;
                     font-size: 14px;
-                }
-                #tarif-selector .VirtualizedSelectOption {
-                    display: flex !important;
-                    flex-direction: column !important;
                 }
                 #tarif-selector .VirtualizedSelectOption:hover {
                     background-color: #f5f9ff !important;
@@ -335,7 +360,7 @@ def create_dash_app(df_filtered):
                         value='A',  # Default to tarif A
                         placeholder="Select tarif code...",
                         style=tarif_dropdown_style,
-                        optionHeight=110,  # Further increase option height
+                        optionHeight=35,  # Further increase option height
                         clearable=False
                     )
                 ], style={'marginBottom': '20px'}),
@@ -359,6 +384,29 @@ def create_dash_app(df_filtered):
                         ],
                         value='N',  # Default to without church tax
                         placeholder="Select church tax option...",
+                        style=dropdown_style,
+                    )
+                ], style={'marginBottom': '20px'}),
+                
+                # Children dropdown
+                html.Div([
+                    html.Label(id='children-label', children="Number of Children:", 
+                        style={
+                            'marginBottom': '8px',
+                            'fontFamily': font_family,
+                            'color': font_color,
+                            'display': 'block',
+                            'whiteSpace': 'nowrap'
+                        }
+                    ),
+                    dcc.Dropdown(
+                        id='children-selector',
+                        options=[
+                            {'label': f"{i} {'Child' if i == 1 else 'Children'}", 'value': i} 
+                            for i in sorted(df_filtered['anzahl_kinder'].unique())
+                        ],
+                        value=0,  # Default to 0 children
+                        placeholder="Select number of children...",
                         style=dropdown_style,
                     )
                 ], style={'marginBottom': '20px'}),
@@ -406,7 +454,7 @@ def create_dash_app(df_filtered):
                         placeholder="Select cantons...",
                         style=dropdown_style,
                         optionHeight=35,
-                        maxHeight=600,
+                        maxHeight=200,  # Reduced from 600 to 300 pixels
                     )
                 ])
             ], style={
@@ -512,6 +560,7 @@ def create_dash_app(df_filtered):
         [Output('income-label', 'children'),
          Output('tarif-label', 'children'),
          Output('church-label', 'children'),
+         Output('children-label', 'children'),
          Output('region-label', 'children'),
          Output('canton-label', 'children')],
         [Input('current-language', 'data')]
@@ -521,6 +570,7 @@ def create_dash_app(df_filtered):
             translations[language]['income_range'],
             translations[language]['tarif_code'],
             translations[language]['church_tax'],
+            translations[language]['number_of_children'],
             translations[language]['language_region'],
             translations[language]['select_cantons']
         ]
@@ -571,16 +621,18 @@ def create_dash_app(df_filtered):
          Input('income-slider', 'value'),
          Input('kirchensteuer-selector', 'value'),
          Input('tarif-selector', 'value'),
-         Input('current-language', 'data')]  # Add language as input
+         Input('children-selector', 'value'),
+         Input('current-language', 'data')]
     )
-    def update_figure(selected_cantons, selected_region, income_range, kirchensteuer, tarif_code, language):
+    def update_figure(selected_cantons, selected_region, income_range, kirchensteuer, tarif_code, children, language):
         # Unpack the income range
         x_min, x_max = income_range
         
-        # Filter data based on kirchensteuer and tarif code selection
+        # Filter data based on kirchensteuer, tarif code, and children selection
         df_filtered_view = df_filtered[
             (df_filtered['kirchensteuer'] == kirchensteuer) & 
-            (df_filtered['tarif_code'] == tarif_code)
+            (df_filtered['tarif_code'] == tarif_code) &
+            (df_filtered['anzahl_kinder'] == children)
         ]
         
         # Check if the filtered data is empty

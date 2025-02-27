@@ -110,14 +110,18 @@ def transform_data(df):
 def filter_data(df):
     """
     Filters the data to include only records with:
-      - No children (anzahl_kinder == 0)
       - Taxable income below 30,000 CHF.
     Also saves the filtered data to CSV.
     """
-    df_filtered = df[
-        (df['anzahl_kinder'] == 0) &
-        (df['steuerbares_einkommen'] <= 30_000)
-    ]
+    # Create a copy to avoid SettingWithCopyWarning
+    df_filtered = df[df['steuerbares_einkommen'] <= 30_000].copy()
+    
+    # Ensure 'kanton' column contains only strings
+    df_filtered['kanton'] = df_filtered['kanton'].astype(str)
+    
+    # Fill NaN values in anzahl_kinder with 0 before converting to integer
+    df_filtered['anzahl_kinder'] = df_filtered['anzahl_kinder'].fillna(0).astype(int)
+    
     output_filtered = 'output/tar25_cleaned_filtered.csv'
     df_filtered.to_csv(output_filtered, index=False)
     print(f"Filtered data saved to '{output_filtered}'")

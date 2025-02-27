@@ -410,10 +410,14 @@ def create_dash_app(df_filtered):
                     )
                 ])
             ], style={
-                'width': '300px',
+                'width': '320px',
                 'padding': '20px',
                 'boxSizing': 'border-box',
-                'backgroundColor': '#f9f9f9'
+                'backgroundColor': 'white',
+                'position': 'relative',
+                'boxShadow': '2px 2px 8px 8px rgba(200, 200, 200, 0.5)',
+                'border': '1px solid #e0e0e0',
+                'borderRadius': '4px'
             }),
             
             # Right column for the plot
@@ -433,7 +437,12 @@ def create_dash_app(df_filtered):
                 'flex': '1',
                 'paddingLeft': '10px',
                 'boxSizing': 'border-box',
-                'height': '100%'  # Make sure the container takes full height
+                'height': '100%',  # Make sure the container takes full height
+                'position': 'relative',  # For positioning the shadow
+                'backgroundColor': 'white',
+                'boxShadow': '2px 2px 8px 8px rgba(200, 200, 200, 0.5)',  # Light grey shadow with offset
+                'border': '1px solid #e0e0e0',
+                'borderRadius': '4px'
             })
         ], style={
             'display': 'flex',
@@ -441,7 +450,8 @@ def create_dash_app(df_filtered):
             'width': 'calc(100% - 4cm)',  # 2cm margin on left and right
             'height': 'calc(100vh - 4cm)', # 2cm margin on top and bottom
             'margin': '2cm',              # 2cm margin on all sides
-            'boxSizing': 'border-box'
+            'boxSizing': 'border-box',
+            'gap': '20px'  # Add space between the two columns
         })
     ], style={
         'width': '100%',

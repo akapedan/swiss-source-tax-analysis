@@ -215,8 +215,8 @@ def create_base_figure(df_filtered, canton_names=None, x_min=0, x_max=30000):
     
     # Update layout
     fig.update_layout(
-        plot_bgcolor='rgba(250, 250, 250, 1)',
-        paper_bgcolor='rgba(250, 250, 250, 1)',
+        plot_bgcolor='white',
+        paper_bgcolor='white',
         title=dict(
             text=f'Source Tax Rate Progression by Canton (2025) - Income Range: {x_min:,} - {x_max:,} CHF',
             x=0.5,
